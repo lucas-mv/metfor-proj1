@@ -5,7 +5,7 @@
 --
 -- Miniproject 1
 --
--- Name:  <replace with your name>
+-- Names:  Julio Lana & Lucas Moura Veloso
 --
 --===============================================
 
