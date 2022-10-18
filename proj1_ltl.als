@@ -107,6 +107,7 @@ pred init [] {
   -- There are no purged objects at all
 
   -- All mailboxes are empty
+        all mB : Mailbox | no mB.messages
 
   -- The predefined mailboxes are mutually distinct
 
