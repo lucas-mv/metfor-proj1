@@ -70,7 +70,8 @@ pred getMessage [m: Message] {
 }
 
 pred moveMessage [m: Message, mb1: Mailbox] {
-
+    m not in mb1.messages
+    m in mb1.messages' 
 }
 
 pred deleteMessage [m: Message] {
@@ -82,7 +83,7 @@ pred sendMessage [m: Message] {
 }
 
 pred emptyTrash [] {
-
+    no MailApp.trash'
 }
 
 pred createMailbox [mb: Mailbox] {
@@ -92,6 +93,10 @@ pred createMailbox [mb: Mailbox] {
 pred deleteMailbox [mb: Mailbox] {
 
 }
+
+--run{one mA : MailApp | one m1 : Message | moveMessage[m1,mA.trash]}
+run{one mA : MailApp | one m1 : Message | emptyTrash}
+--run{one mA : MailApp | some m1,m2,m3 : Message}
 
 
 ----------------------------
