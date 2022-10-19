@@ -56,13 +56,22 @@ fun mSent []: Mailbox { MailApp.sent }
 
 fun mUserBoxes []: set Mailbox { MailApp.userboxes }
 
+-- Operators defined for convenience
+pred noStatusChanged [m: Message] {
+  m.status' = m.status
+}
+
 -------------
 -- Operators
 -------------
 
 
 pred createMessage [m: Message] {
+	-- pre condition: 
 
+	-- pos condition:
+
+	-- frame conditions
 }
 
 pred getMessage [m: Message] {
@@ -70,12 +79,28 @@ pred getMessage [m: Message] {
 }
 
 pred moveMessage [m: Message, mb1: Mailbox] {
-    m not in mb1.messages
-    m in mb1.messages' 
+	-- pre condition: message must be in a different mailbox than the one set to move to
+	--m not in mb1.messages  (Possible implementation)
+	m.~messages != mb1
+	
+	-- pos condition: message must move to the new condition
+	--m.~messages = mb1  (Possible implementation)
+	after m.~messages = mb1
+
+	
+	-- frame conditions
+	noStatusChanged[m]
 }
 
 pred deleteMessage [m: Message] {
+	-- pre condition: message must not be deleted yet
+	m.~messages != MailApp.trash
+	
+	-- pos condition: message must be moved to trash and its status changed to Purged
+	after m.~messages = MailApp.trash
+	after m.status = Purged
 
+	-- frame conditions: no expected frame condition
 }
 
 pred sendMessage [m: Message] {
@@ -83,7 +108,12 @@ pred sendMessage [m: Message] {
 }
 
 pred emptyTrash [] {
-    no MailApp.trash'
+	-- pre condition:no defined pre condition
+	
+	-- pos condition: No messages in trash mailbox
+	no MailApp.trash'
+
+	-- frame conditions: no expected frame condition	
 }
 
 pred createMailbox [mb: Mailbox] {
@@ -94,10 +124,6 @@ pred deleteMailbox [mb: Mailbox] {
 
 }
 
---run{one mA : MailApp | one m1 : Message | moveMessage[m1,mA.trash]}
-run{one mA : MailApp | one m1 : Message | emptyTrash}
---run{one mA : MailApp | some m1,m2,m3 : Message}
-
 
 ----------------------------
 -- Initial state conditions
@@ -107,7 +133,7 @@ pred init [] {
   -- There are no purged objects at all
 
   -- All mailboxes are empty
-        all mB : Mailbox | no mB.messages
+	all mB : Mailbox | no mB.messages
 
   -- The predefined mailboxes are mutually distinct
 
@@ -117,6 +143,28 @@ pred init [] {
 
   -- For convenience, no tracked operation.
 }
+
+
+--run {some p,q : Person | some s1,s2 : State | getMarried[p,q,s1,s2] }
+--run {moveMessage(Inbox) #Message>3} for 4
+--run {some p,q : Person | some s1,s2 : State | getMarried[p,q,s1,s2] }
+--run{one mA : MailApp | one m1 : Message | moveMessage[m1,mA.trash]}
+--run{#messages>2 one mA : MailApp | one m1 : Message | moveMessage[m1,mA.trash]}
+--run{ #messages>1  one m1 : Message | deleteMessage[m1]}
+--run{one mA : MailApp | one m1 : Message | emptyTrash}
+--run{one mA : MailApp | some m1,m2,m3 : Message}
+
+--Run MoveMessage
+--run{one mA : MailApp | one m1 : Message | moveMessage[m1,mA.trash]}
+--Run DeleteMessage
+run{one m1 : Message | deleteMessage[m1]}
+
+pred Test {
+	init
+	some m1, m2 : Message | {createMessage[m1]
+		createMessage[m2] }
+}
+run{Test}
 
 
 -----------------------
