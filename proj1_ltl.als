@@ -131,8 +131,9 @@ pred deleteMailbox [mb: Mailbox] {
 
 pred init [] {
   -- There are no purged objects at all
-
-  -- All mailboxes are empty
+	no m : Message | m.status = Purged
+  
+ -- All mailboxes are empty
 	all mB : Mailbox | no mB.messages
 
   -- The predefined mailboxes are mutually distinct
@@ -157,7 +158,7 @@ pred init [] {
 --Run MoveMessage
 --run{one mA : MailApp | one m1 : Message | moveMessage[m1,mA.trash]}
 --Run DeleteMessage
-run{one m1 : Message | deleteMessage[m1]}
+--run{one m1 : Message | deleteMessage[m1]}
 
 pred Test {
 	init
