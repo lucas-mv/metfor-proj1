@@ -131,16 +131,28 @@ pred deleteMailbox [mb: Mailbox] {
 
 pred init [] {
   -- There are no purged objects at all
-	no m : Message | m.status = Purged
+	--no m : Message | m.status = Purged
+	-- Não são somente mensagens mas todos os objetos por isso a alteraçao
+	no o : Object | o.status = Purged
   
  -- All mailboxes are empty
 	all mB : Mailbox | no mB.messages
 
   -- The predefined mailboxes are mutually distinct
-
+	-- Acredito que tenha que usar o always all disj, mas ainda precisa ser melhor elaborado o statement
+	--always all disj mB1,mB2,mB3,mB4: Mailbox | mB1 in mInbox && mB2 in mDrafts && mB3 in mTrash  && mB4 in mSent 
+	-- always all disj mB1,mB2,mB3,mB4: Mailbox | (mB1 in mInbox && mB2 in mDrafts && mB3 in mTrash  && mB4 in mSent ) && mB1 != mB2 != mB3 != mB4
+	
   -- The predefined mailboxes are the only active objects
+	no o : Object | o.status = InUse && o != (mInbox + mDrafts + mTrash + mSent)
+	-- Se não forçar cada mailbox a ir para InUse o fato do atributo ser "lone" pode deixar o objeto sem nenhum status
+	mInbox.status = InUse
+	mDrafts.status = InUse
+	mTrash.status = InUse
+	mSent.status = InUse
 
   -- The app has no user-created mailboxes
+	no mB : Mailbox | mB in mUserBoxes
 
   -- For convenience, no tracked operation.
 }
@@ -162,8 +174,8 @@ pred init [] {
 
 pred Test {
 	init
-	some m1, m2 : Message | {createMessage[m1]
-		createMessage[m2] }
+	--some m1, m2 : Message | {createMessage[m1]
+	--	createMessage[m2] }
 }
 run{Test}
 
