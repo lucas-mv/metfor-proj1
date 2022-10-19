@@ -142,9 +142,10 @@ pred init [] {
 	-- Acredito que tenha que usar o always all disj, mas ainda precisa ser melhor elaborado o statement
 	--always all disj mB1,mB2,mB3,mB4: Mailbox | mB1 in mInbox && mB2 in mDrafts && mB3 in mTrash  && mB4 in mSent 
 	-- always all disj mB1,mB2,mB3,mB4: Mailbox | (mB1 in mInbox && mB2 in mDrafts && mB3 in mTrash  && mB4 in mSent ) && mB1 != mB2 != mB3 != mB4
+	always disj [ mInbox , mDrafts , mTrash, mSent ]
 	
   -- The predefined mailboxes are the only active objects
-	no o : Object | o.status = InUse && o != (mInbox + mDrafts + mTrash + mSent)
+	no o : Object | o.status = InUse && o not  in (mInbox + mDrafts + mTrash + mSent)
 	-- Se não forçar cada mailbox a ir para InUse o fato do atributo ser "lone" pode deixar o objeto sem nenhum status
 	mInbox.status = InUse
 	mDrafts.status = InUse
@@ -172,12 +173,12 @@ pred init [] {
 --Run DeleteMessage
 --run{one m1 : Message | deleteMessage[m1]}
 
-pred Test {
-	init
+--pred Test {
+--	init
 	--some m1, m2 : Message | {createMessage[m1]
 	--	createMessage[m2] }
-}
-run{Test}
+--}
+--run{Test}
 
 
 -----------------------
@@ -212,7 +213,7 @@ pred trans []  {
 -- that satisfies the initial condition
 pred System {
   init
-  always trans
+--  always trans
 }
 
 run execution { System } for 8
