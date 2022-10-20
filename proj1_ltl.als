@@ -5,7 +5,7 @@
 --
 -- Miniproject 1
 --
--- Names:  Julio Lana & Lucas Moura Veloso
+-- Name: Julio Lana & Lucas Moura Veloso
 --
 --===============================================
 
@@ -56,72 +56,106 @@ fun mSent []: Mailbox { MailApp.sent }
 
 fun mUserBoxes []: set Mailbox { MailApp.userboxes }
 
--- Operators defined for convenience
-pred noStatusChanged [m: Message] {
-  m.status' = m.status
+fun outsideMessages []: Message {
+	Message - (mInbox + mDrafts + mTrash + mSent + mUserBoxes).messages
 }
 
 -------------
 -- Operators
 -------------
 
+pred unchangedMailbox[mb: Mailbox] {
+	mb.status' = mb.status
+	mb.messages' = mb.messages
+	(mUserBoxes & mb)' = (mUserBoxes & mb)
+}
+
+pred unchangedMessage [m: Message] {
+	m.status' = m.status
+}
 
 pred createMessage [m: Message] {
-	-- pre condition: 
+	m in outsideMessages
+	
+	after Track.op = CM
+	after m in mDrafts.messages
+	after m.status = InUse
 
-	-- pos condition:
-
-	-- frame conditions
+	unchangedMessage[Message - m]
+	unchangedMailbox[Mailbox - mDrafts]
 }
 
 pred getMessage [m: Message] {
+	m in outsideMessages
+	
+	after Track.op = GM
+	MailApp.inbox.messages' = MailApp.inbox.messages + m
 
+	unchangedMessage[Message - m]
+	unchangedMailbox[Mailbox - mInbox]
 }
 
 pred moveMessage [m: Message, mb1: Mailbox] {
-	-- pre condition: message must be in a different mailbox than the one set to move to
-	--m not in mb1.messages  (Possible implementation)
-	m.~messages != mb1
+	m not in mb1.messages
 	
-	-- pos condition: message must move to the new condition
-	--m.~messages = mb1  (Possible implementation)
-	after m.~messages = mb1
+	after Track.op = MM
+	mb1.messages' = mb1.messages + m
 
-	
-	-- frame conditions
-	noStatusChanged[m]
+	unchangedMessage[Message]
+	unchangedMailbox[Mailbox - mb1]
 }
 
 pred deleteMessage [m: Message] {
-	-- pre condition: message must not be deleted yet
-	m.~messages != MailApp.trash
-	
-	-- pos condition: message must be moved to trash and its status changed to Purged
-	after m.~messages = MailApp.trash
-	after m.status = Purged
+	m not in MailApp.trash.messages
 
-	-- frame conditions: no expected frame condition
+	after Track.op = DM
+	MailApp.trash.messages' = mTrash + m
+
+	unchangedMessage[Message]
+	unchangedMailbox[Mailbox - mTrash]
 }
 
 pred sendMessage [m: Message] {
+	m in MailApp.drafts.messages
 
+	after Track.op = SM
+	MailApp.sent.messages' = MailApp.sent.messages + m
+
+	unchangedMessage[Message]
+	unchangedMailbox[Mailbox - mSent]
 }
 
 pred emptyTrash [] {
-	-- pre condition:no defined pre condition
-	
-	-- pos condition: No messages in trash mailbox
-	no MailApp.trash'
+	after Track.op = ET
+	all m : MailApp.trash.messages | after m.status = Purged
 
-	-- frame conditions: no expected frame condition	
+	unchangedMailbox[Mailbox]
 }
 
 pred createMailbox [mb: Mailbox] {
+	mb not in mUserBoxes
+	no mb.messages
 
+	after Track.op = CMB
+	after mb in mUserBoxes
+	after mb.status = InUse
+	after no mb.messages
+
+	unchangedMessage[Message]
+	unchangedMailbox[Mailbox - mb]
 }
 
 pred deleteMailbox [mb: Mailbox] {
+	mb in mUserBoxes
 
+	after Track.op = DMB
+	after mb not in mUserBoxes
+	after mb.status = Purged
+	mb.messages' = mb.messages
+	all m : mb.messages | after m.status = Purged
+
+	unchangedMessage[Message - mb.messages]
+	unchangedMailbox[Mailbox - mb]
 }
 
 
@@ -131,54 +165,24 @@ pred deleteMailbox [mb: Mailbox] {
 
 pred init [] {
   -- There are no purged objects at all
-	--no m : Message | m.status = Purged
-	-- Não são somente mensagens mas todos os objetos por isso a alteraçao
-	no o : Object | o.status = Purged
-  
- -- All mailboxes are empty
-	all mB : Mailbox | no mB.messages
+	no m : Message | m.status = Purged
+
+  -- All mailboxes are empty
+	all mb : Mailbox | no mb.messages
 
   -- The predefined mailboxes are mutually distinct
-	-- Acredito que tenha que usar o always all disj, mas ainda precisa ser melhor elaborado o statement
-	--always all disj mB1,mB2,mB3,mB4: Mailbox | mB1 in mInbox && mB2 in mDrafts && mB3 in mTrash  && mB4 in mSent 
-	-- always all disj mB1,mB2,mB3,mB4: Mailbox | (mB1 in mInbox && mB2 in mDrafts && mB3 in mTrash  && mB4 in mSent ) && mB1 != mB2 != mB3 != mB4
-	always disj [ mInbox , mDrafts , mTrash, mSent ]
-	
+	no (mSent & mTrash & mDrafts & mInbox)
+
   -- The predefined mailboxes are the only active objects
-	no o : Object | o.status = InUse && o not  in (mInbox + mDrafts + mTrash + mSent)
-	-- Se não forçar cada mailbox a ir para InUse o fato do atributo ser "lone" pode deixar o objeto sem nenhum status
-	mInbox.status = InUse
-	mDrafts.status = InUse
-	mTrash.status = InUse
-	mSent.status = InUse
+	no obj : Object - (mSent + mTrash + mDrafts + mInbox) | obj.status = InUse
+	all obj : (mSent + mTrash + mDrafts + mInbox) | obj.status = InUse
 
   -- The app has no user-created mailboxes
-	no mB : Mailbox | mB in mUserBoxes
+	no mUserBoxes
 
   -- For convenience, no tracked operation.
+	no Track.op
 }
-
-
---run {some p,q : Person | some s1,s2 : State | getMarried[p,q,s1,s2] }
---run {moveMessage(Inbox) #Message>3} for 4
---run {some p,q : Person | some s1,s2 : State | getMarried[p,q,s1,s2] }
---run{one mA : MailApp | one m1 : Message | moveMessage[m1,mA.trash]}
---run{#messages>2 one mA : MailApp | one m1 : Message | moveMessage[m1,mA.trash]}
---run{ #messages>1  one m1 : Message | deleteMessage[m1]}
---run{one mA : MailApp | one m1 : Message | emptyTrash}
---run{one mA : MailApp | some m1,m2,m3 : Message}
-
---Run MoveMessage
---run{one mA : MailApp | one m1 : Message | moveMessage[m1,mA.trash]}
---Run DeleteMessage
---run{one m1 : Message | deleteMessage[m1]}
-
---pred Test {
---	init
-	--some m1, m2 : Message | {createMessage[m1]
-	--	createMessage[m2] }
---}
---run{Test}
 
 
 -----------------------
@@ -213,7 +217,7 @@ pred trans []  {
 -- that satisfies the initial condition
 pred System {
   init
---  always trans
+  always trans
 }
 
 run execution { System } for 8
@@ -225,7 +229,7 @@ run execution { System } for 8
 
 pred p1 {
 -- Active mailboxes contain only active messages
-
+	always all mb : Mailbox | (mb.status = InUse and mb.messages.status = InUse) or mb.status = Purged
 }
 
 pred p2 {
@@ -269,3 +273,5 @@ assert a4 { System => p4 }
 assert a5 { System => p5 }
 assert a6 { System => p6 }
 assert a7 { System => p7 }
+
+--check a1 for 8
