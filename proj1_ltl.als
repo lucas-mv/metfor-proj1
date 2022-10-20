@@ -246,7 +246,7 @@ pred System {
   always trans
 }
 
-run execution { System } for 8
+--run execution { System } for 8
 
 
 --------------
@@ -281,7 +281,9 @@ pred p4 {
 
 pred p5 {
 -- User-created mailboxes are different from the system mailboxes
-
+	all uB : Mailbox | 
+		uB in mUserBoxes
+		and uB not in (mInbox + mDrafts + mTrash + mSent )
 }
 
 pred p6 {
@@ -304,12 +306,12 @@ pred p7 {
 -- Assertions
 --------------
 
-assert a1 { System => p1 }
-assert a2 { System => p2 }
-assert a3 { System => p3 }
-assert a4 { System => p4 }
-assert a5 { System => p5 }
+--assert a1 { System => p1 }
+--assert a2 { System => p2 }
+--assert a3 { System => p3 }
+--assert a4 { System => p4 }
+--assert a5 { System => p5 }
 assert a6 { System => p6 }
-assert a7 { System => p7 }
+--assert a7 { System => p7 }
 
---check a2 for 8
+check a6 for 8
