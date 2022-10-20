@@ -56,8 +56,12 @@ fun mSent []: Mailbox { MailApp.sent }
 
 fun mUserBoxes []: set Mailbox { MailApp.userboxes }
 
+fun outsideMailboxes []: Mailbox {
+	Mailbox - (mInbox + mDrafts + mTrash + mSent + mUserBoxes)
+}
+
 fun outsideMessages []: Message {
-	Message - (mInbox + mDrafts + mTrash + mSent + mUserBoxes).messages
+	outsideMailboxes.messages
 }
 
 -------------
@@ -65,13 +69,23 @@ fun outsideMessages []: Message {
 -------------
 
 pred unchangedMailbox[mb: Mailbox] {
+	after distinctMailboxes
 	mb.status' = mb.status
 	mb.messages' = mb.messages
 	(mUserBoxes & mb)' = (mUserBoxes & mb)
 }
 
 pred unchangedMessage [m: Message] {
+	after distinctMailboxes
 	m.status' = m.status
+}
+
+pred distinctMailboxes[] {
+	no mInbox.messages & (Message - mInbox.messages)
+	no mDrafts.messages & (Message - mDrafts.messages)
+	no mTrash.messages & (Message - mTrash.messages)
+	no mSent.messages & (Message - mSent.messages)
+	no mUserBoxes.messages & (Message - mUserBoxes.messages)
 }
 
 pred createMessage [m: Message] {
@@ -90,19 +104,25 @@ pred getMessage [m: Message] {
 	
 	after Track.op = GM
 	MailApp.inbox.messages' = MailApp.inbox.messages + m
+	after m.status = InUse
 
 	all u : Message - m | unchangedMessage[u]
 	all u : Mailbox - mInbox | unchangedMailbox[u]
+	distinctMailboxes
 }
 
 pred moveMessage [m: Message, mb1: Mailbox] {
+	m.status = InUse
 	m not in mb1.messages
+	m not in outsideMessages
 	
 	after Track.op = MM
+	m.status' = m.status
 	mb1.messages' = mb1.messages + m
 
 	all u : Message | unchangedMessage[u]
 	all u : Mailbox - mb1 | unchangedMailbox[u]
+	distinctMailboxes
 }
 
 pred deleteMessage [m: Message] {
@@ -113,6 +133,7 @@ pred deleteMessage [m: Message] {
 
 	all u : Message | unchangedMessage[u]
 	all u : Mailbox - mTrash | unchangedMailbox[u]
+	distinctMailboxes
 }
 
 pred sendMessage [m: Message] {
@@ -123,6 +144,7 @@ pred sendMessage [m: Message] {
 
 	all u : Message | unchangedMessage[u]
 	all u : Mailbox - mSent | unchangedMailbox[u]
+	distinctMailboxes
 }
 
 pred emptyTrash [] {
@@ -131,10 +153,11 @@ pred emptyTrash [] {
 
 	all u : Message - mTrash.messages | unchangedMessage[u]
 	all u : Mailbox | unchangedMailbox[u]
+	distinctMailboxes
 }
 
 pred createMailbox [mb: Mailbox] {
-	mb not in mUserBoxes
+	mb in outsideMailboxes
 	no mb.messages
 
 	after Track.op = CMB
@@ -144,6 +167,7 @@ pred createMailbox [mb: Mailbox] {
 
 	all u: Message | unchangedMessage[u]
 	all u: Mailbox - mb | unchangedMailbox[u]
+	distinctMailboxes
 }
 
 pred deleteMailbox [mb: Mailbox] {
@@ -157,6 +181,7 @@ pred deleteMailbox [mb: Mailbox] {
 
 	all u: Message - mb.messages | unchangedMessage[u]
 	all u: Mailbox - mb | unchangedMailbox[u]
+	distinctMailboxes
 }
 
 
@@ -166,13 +191,13 @@ pred deleteMailbox [mb: Mailbox] {
 
 pred init [] {
   -- There are no purged objects at all
-	no m : Message | m.status = Purged
+	no obj : Object | obj.status = Purged
 
   -- All mailboxes are empty
 	all mb : Mailbox | no mb.messages
 
   -- The predefined mailboxes are mutually distinct
-	no (mSent & mTrash & mDrafts & mInbox)
+	distinctMailboxes
 
   -- The predefined mailboxes are the only active objects
 	no obj : Object - (mSent + mTrash + mDrafts + mInbox) | obj.status = InUse
@@ -230,12 +255,18 @@ run execution { System } for 8
 
 pred p1 {
 -- Active mailboxes contain only active messages
-	always all mb : Mailbox | (mb.status = InUse and mb.messages.status = InUse) or mb.status = Purged
+	always all mb : Mailbox | 
+		(mb.status = InUse and all m: mb.messages | m.status = InUse) 
+		or mb.status = Purged 
+		or no mb.status
 }
 
 pred p2 {
 -- Every active message belongs to some active mailbox
-
+	always all m : Message |
+		(m.status = InUse) and (m.~messages.status = InUse)
+		or m.status = Purged
+		or no m.status
 }
 
 pred p3 {
@@ -275,4 +306,4 @@ assert a5 { System => p5 }
 assert a6 { System => p6 }
 assert a7 { System => p7 }
 
---check a1 for 8
+--check a2 for 8
