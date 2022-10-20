@@ -81,8 +81,8 @@ pred createMessage [m: Message] {
 	after m in mDrafts.messages
 	after m.status = InUse
 
-	unchangedMessage[Message - m]
-	unchangedMailbox[Mailbox - mDrafts]
+	all u : Message - m | unchangedMessage[u]
+	all u : Mailbox - mDrafts | unchangedMailbox[u]
 }
 
 pred getMessage [m: Message] {
@@ -91,8 +91,8 @@ pred getMessage [m: Message] {
 	after Track.op = GM
 	MailApp.inbox.messages' = MailApp.inbox.messages + m
 
-	unchangedMessage[Message - m]
-	unchangedMailbox[Mailbox - mInbox]
+	all u : Message - m | unchangedMessage[u]
+	all u : Mailbox - mInbox | unchangedMailbox[u]
 }
 
 pred moveMessage [m: Message, mb1: Mailbox] {
@@ -101,8 +101,8 @@ pred moveMessage [m: Message, mb1: Mailbox] {
 	after Track.op = MM
 	mb1.messages' = mb1.messages + m
 
-	unchangedMessage[Message]
-	unchangedMailbox[Mailbox - mb1]
+	all u : Message | unchangedMessage[u]
+	all u : Mailbox - mb1 | unchangedMailbox[u]
 }
 
 pred deleteMessage [m: Message] {
@@ -111,8 +111,8 @@ pred deleteMessage [m: Message] {
 	after Track.op = DM
 	MailApp.trash.messages' = mTrash + m
 
-	unchangedMessage[Message]
-	unchangedMailbox[Mailbox - mTrash]
+	all u : Message | unchangedMessage[u]
+	all u : Mailbox - mTrash | unchangedMailbox[u]
 }
 
 pred sendMessage [m: Message] {
@@ -121,15 +121,16 @@ pred sendMessage [m: Message] {
 	after Track.op = SM
 	MailApp.sent.messages' = MailApp.sent.messages + m
 
-	unchangedMessage[Message]
-	unchangedMailbox[Mailbox - mSent]
+	all u : Message | unchangedMessage[u]
+	all u : Mailbox - mSent | unchangedMailbox[u]
 }
 
 pred emptyTrash [] {
 	after Track.op = ET
 	all m : MailApp.trash.messages | after m.status = Purged
 
-	unchangedMailbox[Mailbox]
+	all u : Message - mTrash.messages | unchangedMessage[u]
+	all u : Mailbox | unchangedMailbox[u]
 }
 
 pred createMailbox [mb: Mailbox] {
@@ -141,8 +142,8 @@ pred createMailbox [mb: Mailbox] {
 	after mb.status = InUse
 	after no mb.messages
 
-	unchangedMessage[Message]
-	unchangedMailbox[Mailbox - mb]
+	all u: Message | unchangedMessage[u]
+	all u: Mailbox - mb | unchangedMailbox[u]
 }
 
 pred deleteMailbox [mb: Mailbox] {
@@ -154,8 +155,8 @@ pred deleteMailbox [mb: Mailbox] {
 	mb.messages' = mb.messages
 	all m : mb.messages | after m.status = Purged
 
-	unchangedMessage[Message - mb.messages]
-	unchangedMailbox[Mailbox - mb]
+	all u: Message - mb.messages | unchangedMessage[u]
+	all u: Mailbox - mb | unchangedMailbox[u]
 }
 
 
