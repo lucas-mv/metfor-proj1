@@ -286,12 +286,18 @@ pred p5 {
 
 pred p6 {
 -- An object can have Purged status only if it was once active
-
+	all o : Object {
+		o.status = Purged 
+		 once o.status = InUse 
+	}
 }
 
 pred p7 {
 -- Every sent message was once a draft message
-
+	all m : Message {
+		m in mSent.messages 
+		 once m in mDrafts.messages
+	}
 }
 
 --------------
