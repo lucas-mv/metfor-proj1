@@ -271,34 +271,39 @@ pred p2 {
 
 pred p3 {
 -- Mailboxes do not share messages
+	always all m : Message |
+		one m.~messages
+		or no m.status
 
 }
 
 pred p4 {
 -- The system mailboxes are always active
-
+	always no  mB : Mailbox |
+		mB not in outsideMailboxes and mB.status != InUse
 }
 
 pred p5 {
 -- User-created mailboxes are different from the system mailboxes
-	all uB : Mailbox | 
-		uB in mUserBoxes
-		and uB not in (mInbox + mDrafts + mTrash + mSent )
+	always no uB : Mailbox | 
+		(uB in mUserBoxes and uB in (mInbox + mDrafts + mTrash + mSent ))
 }
 
 pred p6 {
 -- An object can have Purged status only if it was once active
-	all o : Object {
-		o.status = Purged 
-		 once o.status = InUse 
+	always all o : Object {
+		o.status = Purged and once o.status = InUse 
+		or o.status = InUse
+		or o.status
 	}
 }
 
 pred p7 {
 -- Every sent message was once a draft message
-	all m : Message {
-		m in mSent.messages 
-		 once m in mDrafts.messages
+	always all m : Message {
+		(m in mSent.messages and once m in mDrafts.messages)
+		or m.status = Purged
+		or no m.status
 	}
 }
 
