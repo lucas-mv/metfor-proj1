@@ -69,6 +69,7 @@ fun outsideMessages []: Message {
 -------------
 
 pred unchangedMailbox[mb: Mailbox] {
+-- Operator added for convenience
 	after distinctMailboxes
 	mb.status' = mb.status
 	mb.messages' = mb.messages
@@ -76,11 +77,13 @@ pred unchangedMailbox[mb: Mailbox] {
 }
 
 pred unchangedMessage [m: Message] {
+-- Operator added for convenience
 	after distinctMailboxes
 	m.status' = m.status
 }
 
 pred distinctMailboxes[] {
+-- Operator added for convenience
 	no mInbox.messages & (Message - mInbox.messages)
 	no mDrafts.messages & (Message - mDrafts.messages)
 	no mTrash.messages & (Message - mTrash.messages)
@@ -89,96 +92,121 @@ pred distinctMailboxes[] {
 }
 
 pred createMessage [m: Message] {
+	-- pre condition: Message exists but not in in any mailbox
 	m in outsideMessages
 	
+	-- pos condition: Set message as draft message on draft mailbox
 	after Track.op = CM
 	after m in mDrafts.messages
 	after m.status = InUse
 
+	-- frame conditions: No change on overall conditions mailboxes and messages
 	all u : Message - m | unchangedMessage[u]
 	all u : Mailbox - mDrafts | unchangedMailbox[u]
 }
 
 pred getMessage [m: Message] {
+	-- pre condition:	Message exists but not in in any mailbox
 	m in outsideMessages
 	
+	-- pos condition: Message to be inserted in inbox
 	after Track.op = GM
 	MailApp.inbox.messages' = MailApp.inbox.messages + m
 	after m.status = InUse
 
+	-- frame conditions: No change on overall conditions mailboxes and messages 
 	all u : Message - m | unchangedMessage[u]
 	all u : Mailbox - mInbox | unchangedMailbox[u]
 	distinctMailboxes
 }
 
 pred moveMessage [m: Message, mb1: Mailbox] {
+	-- pre condition: message must be in a different mailbox than the one set to move to
 	m.status = InUse
 	m not in mb1.messages
 	m not in outsideMessages
 	
+	-- pos condition: message must move to the new condition
 	after Track.op = MM
 	m.status' = m.status
 	mb1.messages' = mb1.messages + m
 
+	-- frame conditions:No change on overall conditions mailboxes and messages 
 	all u : Message | unchangedMessage[u]
 	all u : Mailbox - mb1 | unchangedMailbox[u]
 	distinctMailboxes
 }
 
 pred deleteMessage [m: Message] {
+	-- pre condition: message must not be deleted yet
 	m not in MailApp.trash.messages
 
+	-- pos condition: message must be moved to trash and its status changed to Purged
 	after Track.op = DM
 	MailApp.trash.messages' = mTrash + m
 
+	-- frame conditions: No change on overall conditions mailboxes and messages 
 	all u : Message | unchangedMessage[u]
 	all u : Mailbox - mTrash | unchangedMailbox[u]
 	distinctMailboxes
 }
 
 pred sendMessage [m: Message] {
+	-- pre condition: message exists as a draft
 	m in MailApp.drafts.messages
 
+	-- pos condition:  message to "moved" to sent box
 	after Track.op = SM
 	MailApp.sent.messages' = MailApp.sent.messages + m
 
+	-- frame conditions: No change on overall conditions mailboxes and messages 
 	all u : Message | unchangedMessage[u]
 	all u : Mailbox - mSent | unchangedMailbox[u]
 	distinctMailboxes
 }
 
 pred emptyTrash [] {
+	-- pre condition:no defined pre condition
+
+	-- pos condition: No messages in trash mailbox
 	after Track.op = ET
 	all m : MailApp.trash.messages | after m.status = Purged
 
+	-- frame conditions: No change on overall conditions mailboxes and messages 
 	all u : Message - mTrash.messages | unchangedMessage[u]
 	all u : Mailbox | unchangedMailbox[u]
 	distinctMailboxes
 }
 
 pred createMailbox [mb: Mailbox] {
+	-- pre condition: mailbox exist but not integrated to mailapp
 	mb in outsideMailboxes
 	no mb.messages
 
+	-- pos condition:  the mailbox to be set as a userBox
 	after Track.op = CMB
 	after mb in mUserBoxes
 	after mb.status = InUse
 	after no mb.messages
 
+	-- frame conditions: No change on overall conditions mailboxes and messages 
 	all u: Message | unchangedMessage[u]
 	all u: Mailbox - mb | unchangedMailbox[u]
 	distinctMailboxes
 }
 
 pred deleteMailbox [mb: Mailbox] {
+	-- pre condition: mailbox exists as a userbox
 	mb in mUserBoxes
 
+	-- pos condition:  purge the mailbox and remove links of it
 	after Track.op = DMB
 	after mb not in mUserBoxes
 	after mb.status = Purged
 	mb.messages' = mb.messages
 	all m : mb.messages | after m.status = Purged
 
+	-- frame conditions: No change on overall conditions mailboxes and messages 
 	all u: Message - mb.messages | unchangedMessage[u]
 	all u: Mailbox - mb | unchangedMailbox[u]
 	distinctMailboxes
@@ -294,7 +322,7 @@ pred p6 {
 	always all o : Object {
 		o.status = Purged and once o.status = InUse 
 		or o.status = InUse
-		or o.status
+		or no o.status
 	}
 }
 
@@ -311,12 +339,12 @@ pred p7 {
 -- Assertions
 --------------
 
---assert a1 { System => p1 }
---assert a2 { System => p2 }
---assert a3 { System => p3 }
---assert a4 { System => p4 }
---assert a5 { System => p5 }
+assert a1 { System => p1 }
+assert a2 { System => p2 }
+assert a3 { System => p3 }
+assert a4 { System => p4 }
+assert a5 { System => p5 }
 assert a6 { System => p6 }
---assert a7 { System => p7 }
+assert a7 { System => p7 }
 
-check a6 for 8
+check a7 for 8
